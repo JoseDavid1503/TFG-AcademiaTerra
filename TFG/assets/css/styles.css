@@ -1,0 +1,276 @@
+/* ================================
+   1. Fuente global e Importaciones
+================================== */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary: #00d4ff;
+  --dark: #0a0f1c;
+  --glass: rgba(20, 25, 45, 0.78);
+  --glass-hover: rgba(30, 38, 60, 0.85);
+  --border-light: rgba(0, 212, 255, 0.15);
+  --text-main: #e0e7ff;
+  --text-muted: #8a94b0;
+}
+
+/* ================================
+   2. Configuración del Body y Fondo
+================================== */
+body {
+  font-family: 'Poppins', system-ui, sans-serif;
+  margin: 0; padding: 0;
+  line-height: 1.6; 
+  color: var(--text-main);
+  background: linear-gradient(135deg, rgba(10, 15, 28, 0.92) 0%, rgba(26, 35, 56, 0.92) 100%), url('../img/fondoweb.jpg?v=2');
+  background-size: cover; 
+  background-position: center; 
+  background-attachment: fixed; 
+  min-height: 100vh;
+}
+
+/* ================================
+   3. Header (Cabecera)
+================================== */
+header {
+  background: rgba(10, 15, 28, 0.85) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid var(--border-light);
+  color: white;
+}
+
+/* --- REGLA DE SEGURIDAD SUPREMA --- */
+header svg, .brand svg {
+    max-width: 32px !important;
+    max-height: 32px !important;
+    width: 32px !important;
+    min-width: 32px !important;
+}
+
+/* Enlaces del menú (Escritorio) */
+.nav-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.nav-links a {
+  color: var(--text-main) !important;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: color 0.3s ease;
+}
+
+.nav-links a:hover { 
+    color: var(--primary) !important; 
+    text-decoration: none; 
+}
+
+/* Ocultar controles móvil en PC */
+.mobile-controls { display: none; }
+
+/* ================================
+   4. Estilos Responsive (Móvil)
+================================== */
+@media screen and (max-width: 768px) {
+  .mobile-controls { display: block; }
+  .nav-links { display: none; }
+  
+  .nav-links a {
+      display: block;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 1.1em;
+  }
+}
+
+/* ================================
+   5. Estructura Principal (Contenedor y Tarjetas)
+================================== */
+.container { 
+  width: 90%; 
+  max-width: 1200px; 
+  margin: 0 auto; 
+  padding: 40px 0; 
+}
+
+/* Estilo de tarjeta Efecto Cristal centrada */
+.card {
+  background: var(--glass) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 40px 50px;
+  border-radius: 24px; 
+  border: 1px solid var(--border-light);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+  height: auto !important; 
+  display: block;
+  color: var(--text-main);
+}
+
+h1, h2, h3 { color: white; margin-top: 0; margin-bottom: 15px; font-weight: 700; }
+.muted { color: var(--text-muted); font-size: 1.1em; margin-bottom: 25px; }
+
+/* ================================
+   6. GRID DE CURSOS Y NOTICIAS
+================================== */
+.class-list, .news-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+  gap: 30px; 
+  align-items: start; 
+  margin-top: 20px;
+}
+
+.class-item, .news-item {
+  background: var(--glass); 
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-light); 
+  border-radius: 20px;
+  padding: 30px 20px; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  transition: all 0.4s ease;
+  color: var(--text-main);
+}
+
+.class-item:hover, .news-item:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 40px rgba(0, 212, 255, 0.15);
+    border-color: var(--primary);
+    background: var(--glass-hover);
+}
+
+/* Títulos dentro de las tarjetas */
+.ciclo-title, .news-title { text-align: center; width: 100%; margin-bottom: 15px; font-size: 1.4rem; color: white; }
+.class-item p, .news-item p { text-align: center; font-size: 0.95em; color: var(--text-muted); width: 100%; margin-bottom: 1.5rem; }
+
+/* ================================
+   7. Botones y Badges (CORREGIDO PARA EL HERO)
+================================== */
+/* Base del botón (Da la forma, el texto y la transición) */
+.btn {
+  display: inline-block; 
+  padding: 12px 32px; 
+  border-radius: 50px; 
+  text-decoration: none;
+  border: none; 
+  cursor: pointer; 
+  font-size: 1.05em;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+/* Botón Principal Relleno (Cyan) */
+.btn-primary, .btn {
+  background-color: var(--primary); 
+  color: var(--dark);
+}
+.btn-primary:hover, .btn:hover { 
+    transform: translateY(-3px); 
+    box-shadow: 0 10px 25px rgba(0,212,255,0.4); 
+}
+
+/* Botón Transparente con borde Cyan */
+.btn-outline {
+  display: inline-block; 
+  padding: 10px 32px; /* Ligeramente menor para compensar el borde de 2px */
+  border: 2px solid var(--primary);
+  color: var(--primary); 
+  text-decoration: none; 
+  border-radius: 50px;
+  font-weight: 600; 
+  transition: all 0.3s ease;
+  background: transparent;
+  text-align: center;
+}
+.btn-outline:hover { 
+    background: rgba(0,212,255,0.1); 
+    color: var(--primary); 
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(0,212,255,0.15);
+}
+
+/* Badges (Adaptadas al modo oscuro) */
+.badge, .news-badge { 
+    padding: 6px 18px; 
+    border-radius: 50px; 
+    font-size: 0.85em; 
+    font-weight: 700; 
+    text-transform: uppercase; 
+    margin-bottom: 15px; 
+    display: inline-block;
+}
+.badge.medio { background: rgba(234, 88, 12, 0.15); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.3); }
+.badge.superior { background: rgba(0, 212, 255, 0.15); color: var(--primary); border: 1px solid var(--border-light); }
+.news-badge.ia { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.3); } 
+.news-badge.ciber { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+.news-badge.cuantica { background: rgba(14, 116, 144, 0.15); color: #22d3ee; border: 1px solid rgba(34, 211, 238, 0.3); }
+
+/* ================================
+   8. Login y Formularios
+================================== */
+.login-container { display: flex; justify-content: center; align-items: center; min-height: 75vh; }
+.login-card { width: 100%; max-width: 450px; padding: 40px; }
+.login-card label { text-align: left; display: block; width: 100%; margin-bottom: 8px; color: #e0e7ff; font-weight: 500; }
+.login-card input { width: 100%; }
+
+input { 
+    background: rgba(10, 15, 28, 0.6); 
+    color: white; 
+    padding: 12px 15px; 
+    border: 1px solid var(--border-light); 
+    border-radius: 8px; 
+    margin-bottom: 20px; 
+    box-sizing: border-box; 
+    transition: all 0.3s ease;
+}
+input:focus { 
+    outline: none; 
+    border-color: var(--primary); 
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15); 
+    background: rgba(10, 15, 28, 0.8);
+}
+input::placeholder { color: #5a668a; }
+
+/* Imagen login (con brillo cyan) */
+.login-img { 
+    width: 90px; 
+    height: auto; 
+    display: block; 
+    margin: 0 auto 20px auto; 
+    filter: drop-shadow(0 0 12px rgba(0,212,255,0.4));
+}
+
+/* Mensajes Alerta */
+.error-msg { background: rgba(239, 68, 68, 0.1); color: #fca5a5; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid rgba(239, 68, 68, 0.3); }
+.success-msg { background: rgba(34, 197, 94, 0.1); color: #86efac; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid rgba(34, 197, 94, 0.3); }
+
+/* ================================
+   9. Footer
+================================== */
+footer { 
+    margin-top: 40px; 
+    background: rgba(8, 12, 23, 0.95); 
+    border-top: 1px solid var(--border-light);
+    color: var(--text-muted); 
+    padding: 30px 0;
+}
+.footer-content {
+  max-width: 1200px; 
+  margin: 0 auto; 
+  padding: 0 40px;
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  background: transparent; 
+  border-radius: 0;
+}
+.footer-content div { display: flex; align-items: center; gap: 15px; }
