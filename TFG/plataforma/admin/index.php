@@ -1,6 +1,11 @@
 <?php
 session_start();
 
+// Activar errores temporalmente
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // --- 🛡️ GUARDIA DE SEGURIDAD ---
 if (empty($_SESSION['user_id']) || $_SESSION['tipo_usuario'] !== 'admin') {
     header('Location: ../../login.php');
@@ -11,31 +16,29 @@ require_once '../../config/config.php';
 require_once '../../config/db_pdo.php';
 
 $db = DB::open();
+$errorCritico = "";
 
 // ==========================================
-// 📊 CONSULTAS PARA LOS GRÁFICOS (NUEVO)
+// 📊 CONSULTAS PARA LOS GRÁFICOS
 // ==========================================
-
-// 1. Alumnos por Curso (Para el gráfico Doughnut)
 $sqlAlumnosPorCurso = "SELECT curso_matriculado, COUNT(*) as total FROM Alumnos WHERE curso_matriculado IS NOT NULL AND curso_matriculado != '' GROUP BY curso_matriculado";
 $resultAlumnosPorCurso = $db->query($sqlAlumnosPorCurso);
 $cursosNombres = [];
 $cursosTotales = [];
 if (is_array($resultAlumnosPorCurso)) {
     foreach ($resultAlumnosPorCurso as $row) {
-        $cursosNombres[] = str_replace('_', ' ', $row['curso_matriculado']);
-        $cursosTotales[] = (int)$row['total'];
+        $cursosNombres[] = str_replace('_', ' ', (string)($row['curso_matriculado'] ?? ''));
+        $cursosTotales[] = (int)($row['total'] ?? 0);
     }
 }
 
-// 2. Total Alumnos vs Profesores (Para el gráfico de Barras)
 $totalAlumnosChart = 0;
 $totalProfesoresChart = 0;
 $resTotalAlumnos = $db->query("SELECT COUNT(id) as total FROM Alumnos");
-if (!empty($resTotalAlumnos)) $totalAlumnosChart = (int)$resTotalAlumnos[0]['total'];
+if (is_array($resTotalAlumnos) && !empty($resTotalAlumnos)) $totalAlumnosChart = (int)$resTotalAlumnos[0]['total'];
 
 $resTotalProfesores = $db->query("SELECT COUNT(id) as total FROM Profesores");
-if (!empty($resTotalProfesores)) $totalProfesoresChart = (int)$resTotalProfesores[0]['total'];
+if (is_array($resTotalProfesores) && !empty($resTotalProfesores)) $totalProfesoresChart = (int)$resTotalProfesores[0]['total'];
 
 // ==========================================
 // ⚙️ LÓGICA DE VISTA DE TABLAS
@@ -45,13 +48,14 @@ if (!in_array($view, ['alumnos', 'profesores'])) {
     $view = 'alumnos';
 }
 
+// ✅ RUTAS CORREGIDAS: Todo está en la misma carpeta 'admin'
 if ($view === 'profesores') {
     $table = 'Profesores';
     $curso_field = 'curso_asignado';
     $edit_url = 'editar_profesor.php';
     $delete_url = 'borrar_profesor.php';
     $add_url = 'nuevo_profesor.php'; 
-    $export_url = 'exportar_profesores_csv.php';
+    $export_url = 'exportar_csv.php?tipo=profesores'; // Ruta directa
     $label_plural = 'profesores';
     $label_singular = 'profesor';
 } else {
@@ -60,7 +64,7 @@ if ($view === 'profesores') {
     $edit_url = 'editar_alumno.php';
     $delete_url = 'borrar_alumno.php';
     $add_url = 'nuevo_alumno.php'; 
-    $export_url = 'exportar_csv.php';
+    $export_url = 'exportar_csv.php?tipo=alumnos'; // Ruta directa
     $label_plural = 'alumnos';
     $label_singular = 'alumno';
 }
@@ -92,13 +96,21 @@ $total_result = $db->query($count_sql, $params);
 $total_rows = (is_array($total_result) && !empty($total_result)) ? (int)$total_result[0]['total'] : 0;
 $total_pages = $total_rows > 0 ? ceil($total_rows / $limit) : 1; 
 
+// ✅ RECUPERAMOS LA FOTO
 $sql = "SELECT id, nombre, apellidos, dni, email, telefono, foto, $curso_field AS curso_actual 
         FROM $table 
         $where_sql 
         ORDER BY id DESC 
         LIMIT $limit OFFSET $offset";
+        
 $usuarios = $db->query($sql, $params);
-if (!is_array($usuarios)) $usuarios = [];
+
+if ($usuarios === false) {
+    $errorCritico = "Error SQL en la tabla $table. Revisa los campos.";
+    $usuarios = [];
+} elseif (!is_array($usuarios)) {
+    $usuarios = [];
+}
 
 $cursos_sql = "SELECT DISTINCT $curso_field AS curso FROM $table WHERE $curso_field IS NOT NULL AND $curso_field != '' ORDER BY $curso_field";
 $cursos_disponibles = $db->query($cursos_sql);
@@ -117,9 +129,7 @@ if (!is_array($cursos_disponibles)) $cursos_disponibles = [];
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
-        
         :root { --primary: 34 211 238; }
-        
         .admin-wrapper { font-family: 'Inter', system-ui, sans-serif; color: #e4e4e7; }
         .title-font { font-family: 'Space Grotesk', sans-serif; }
         .table-row { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -127,13 +137,10 @@ if (!is_array($cursos_disponibles)) $cursos_disponibles = [];
         .avatar { transition: all 0.3s ease; min-width: 40px; }
         .avatar:hover { transform: scale(1.08); box-shadow: 0 0 0 4px rgb(34 211 238 / 0.3); }
         .badge { font-size: 0.75rem; padding: 2px 10px; border-radius: 9999px; font-weight: 600; white-space: nowrap; }
-        
         .tab-link { padding: 10px 24px; border-radius: 12px; font-weight: 600; transition: all 0.2s; text-decoration: none; }
         .tab-link.active { background-color: #06b6d4; color: #09090b; box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2); }
         .tab-link.inactive { background-color: #27272a; color: #a1a1aa; border: 1px solid #3f3f46; }
         .tab-link.inactive:hover { background-color: #3f3f46; color: white; }
-
-        /* Estilos específicos para la zona de gráficos */
         .chart-card { background-color: rgba(24, 24, 27, 0.8); backdrop-filter: blur(12px); border: 1px solid #27272a; border-radius: 1.5rem; padding: 1.5rem; }
     </style>
 </head>
@@ -164,6 +171,12 @@ if (!is_array($cursos_disponibles)) $cursos_disponibles = [];
                     </div>
                 </div>
             </div>
+
+            <?php if (!empty($errorCritico)): ?>
+                <div class="bg-red-600 text-white p-5 rounded-2xl mb-6 font-bold shadow-lg border border-red-400">
+                    <i class="fa-solid fa-triangle-exclamation mr-2 text-xl"></i> <?php echo $errorCritico; ?>
+                </div>
+            <?php endif; ?>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div class="chart-card shadow-xl">
@@ -208,8 +221,8 @@ if (!is_array($cursos_disponibles)) $cursos_disponibles = [];
                                 <select name="curso" class="bg-transparent outline-none text-zinc-300 cursor-pointer w-full">
                                     <option value="" class="bg-zinc-800">Todos los cursos</option>
                                     <?php foreach ($cursos_disponibles as $c): ?>
-                                        <option value="<?php echo htmlspecialchars($c['curso']); ?>" class="bg-zinc-800" <?php if($curso_filter === $c['curso']) echo 'selected'; ?>>
-                                            <?php echo htmlspecialchars(str_replace('_', ' ', $c['curso'])); ?>
+                                        <option value="<?php echo htmlspecialchars((string)($c['curso'] ?? '')); ?>" class="bg-zinc-800" <?php if($curso_filter === ($c['curso'] ?? '')) echo 'selected'; ?>>
+                                            <?php echo htmlspecialchars(str_replace('_', ' ', (string)($c['curso'] ?? ''))); ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -234,34 +247,43 @@ if (!is_array($cursos_disponibles)) $cursos_disponibles = [];
                         <tbody class="divide-y divide-zinc-800 bg-transparent">
                             <?php if (empty($usuarios)): ?>
                                 <tr>
-                                    <td colspan="4" class="px-4 py-10 text-center text-zinc-500">No se han encontrado <?php echo $label_plural; ?>.</td>
+                                    <td colspan="4" class="px-4 py-10 text-center text-zinc-500">No se han encontrado <?php echo htmlspecialchars($label_plural); ?>.</td>
                                 </tr>
                             <?php else: ?>
                                 <?php 
                                 $colores_avatar = ['bg-cyan-500', 'bg-purple-500', 'bg-emerald-500', 'bg-blue-500', 'bg-pink-500', 'bg-amber-500', 'bg-rose-500'];
+                                
                                 foreach ($usuarios as $usuario): 
-                                    $inicial = mb_strtoupper(mb_substr($usuario['nombre'], 0, 1));
-                                    $color_idx = $usuario['id'] % count($colores_avatar);
-                                    $color_bg = $colores_avatar[$color_idx];
-                                    $curso_raw = $usuario['curso_actual'] ?? 'Sin asignar';
-                                    $curso_text = str_replace('_', ' ', $curso_raw);
+                                    $u_id = (int)($usuario['id'] ?? 0);
+                                    $u_nombre = (string)($usuario['nombre'] ?? 'Desconocido');
+                                    $u_apellidos = (string)($usuario['apellidos'] ?? '');
+                                    $u_dni = (string)($usuario['dni'] ?? '---');
+                                    $u_email = (string)($usuario['email'] ?? '---');
+                                    $u_telefono = (string)($usuario['telefono'] ?? '---');
+                                    $u_curso = (string)($usuario['curso_actual'] ?? 'Sin asignar');
+                                    $u_foto = (string)($usuario['foto'] ?? '');
                                     
+                                    $inicial = mb_strtoupper(mb_substr($u_nombre !== '' ? $u_nombre : 'U', 0, 1));
+                                    $color_idx = $u_id % count($colores_avatar);
+                                    $color_bg = $colores_avatar[$color_idx];
+                                    
+                                    $curso_text = str_replace('_', ' ', $u_curso);
                                     $badge_color = 'bg-zinc-600';
-                                    if (strpos($curso_raw, 'DAW') !== false) $badge_color = 'bg-blue-500';
-                                    elseif (strpos($curso_raw, 'ASIR') !== false) $badge_color = 'bg-indigo-500';
-                                    elseif (strpos($curso_raw, 'SMR') !== false) $badge_color = 'bg-emerald-500';
+                                    if (strpos($u_curso, 'DAW') !== false) $badge_color = 'bg-blue-500';
+                                    elseif (strpos($u_curso, 'ASIR') !== false) $badge_color = 'bg-indigo-500';
+                                    elseif (strpos($u_curso, 'SMR') !== false) $badge_color = 'bg-emerald-500';
                                 ?>
                                     <tr class="table-row border-b border-zinc-800 last:border-none">
                                         <td class="px-4 md:px-8 py-4 whitespace-nowrap">
                                             <div class="flex items-center gap-4">
-                                                <?php if (!empty($usuario['foto']) && strpos($usuario['foto'], 'ui-avatars') === false): ?>
-                                                    <img src="../../<?php echo htmlspecialchars($usuario['foto']); ?>" alt="Foto" class="avatar w-12 h-12 rounded-2xl object-cover shadow-inner">
+                                                <?php if ($u_foto !== '' && strpos($u_foto, 'ui-avatars') === false): ?>
+                                                    <img src="../../<?php echo htmlspecialchars($u_foto); ?>" alt="Foto" class="avatar w-12 h-12 rounded-2xl object-cover shadow-inner">
                                                 <?php else: ?>
-                                                    <div class="avatar w-12 h-12 <?php echo $color_bg; ?> rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-inner"><?php echo $inicial; ?></div>
+                                                    <div class="avatar w-12 h-12 <?php echo $color_bg; ?> rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-inner"><?php echo htmlspecialchars($inicial); ?></div>
                                                 <?php endif; ?>
                                                 <div>
-                                                    <div class="font-bold text-white text-base mb-1"><?php echo htmlspecialchars($usuario['nombre'] . ' ' . $usuario['apellidos']); ?></div>
-                                                    <div class="text-zinc-500 font-mono text-xs">ID: #<?php echo $usuario['id']; ?> | DNI: <?php echo htmlspecialchars($usuario['dni']); ?></div>
+                                                    <div class="font-bold text-white text-base mb-1"><?php echo htmlspecialchars(trim($u_nombre . ' ' . $u_apellidos)); ?></div>
+                                                    <div class="text-zinc-500 font-mono text-xs">ID: #<?php echo $u_id; ?> | DNI: <?php echo htmlspecialchars($u_dni); ?></div>
                                                 </div>
                                             </div>
                                         </td>
@@ -269,13 +291,13 @@ if (!is_array($cursos_disponibles)) $cursos_disponibles = [];
                                             <span class="badge <?php echo $badge_color; ?> text-white tracking-wide"><?php echo htmlspecialchars($curso_text); ?></span>
                                         </td>
                                         <td class="px-4 py-4 hidden lg:table-cell">
-                                            <div class="text-cyan-400 text-sm mb-1 break-all"><?php echo htmlspecialchars($usuario['email']); ?></div>
-                                            <div class="text-zinc-400 font-mono text-xs"><i class="fa-solid fa-phone text-zinc-600 mr-1"></i> <?php echo htmlspecialchars($usuario['telefono']); ?></div>
+                                            <div class="text-cyan-400 text-sm mb-1 break-all"><?php echo htmlspecialchars($u_email); ?></div>
+                                            <div class="text-zinc-400 font-mono text-xs"><i class="fa-solid fa-phone text-zinc-600 mr-1"></i> <?php echo htmlspecialchars($u_telefono); ?></div>
                                         </td>
                                         <td class="px-4 md:px-8 py-4 whitespace-nowrap text-center">
                                             <div class="flex justify-center gap-2">
-                                                <a href="<?php echo $edit_url; ?>?id=<?php echo $usuario['id']; ?>" class="bg-zinc-800 hover:bg-blue-600 hover:text-white p-2.5 rounded-xl transition-all text-zinc-400"><i class="fa-solid fa-pen text-sm"></i></a>
-                                                <a href="#" onclick="confirmarBorrado(event, '<?php echo $delete_url; ?>?id=<?php echo $usuario['id']; ?>', '<?php echo addslashes($usuario['nombre'] . ' ' . $usuario['apellidos']); ?>')" class="bg-zinc-800 hover:bg-red-600 hover:text-white p-2.5 rounded-xl transition-all text-zinc-400"><i class="fa-solid fa-trash text-sm"></i></a>
+                                                <a href="<?php echo htmlspecialchars($edit_url); ?>?id=<?php echo $u_id; ?>" class="bg-zinc-800 hover:bg-blue-600 hover:text-white p-2.5 rounded-xl transition-all text-zinc-400"><i class="fa-solid fa-pen text-sm"></i></a>
+                                                <a href="#" onclick="confirmarBorrado(event, '<?php echo htmlspecialchars($delete_url); ?>?id=<?php echo $u_id; ?>', '<?php echo htmlspecialchars(addslashes(trim($u_nombre . ' ' . $u_apellidos))); ?>')" class="bg-zinc-800 hover:bg-red-600 hover:text-white p-2.5 rounded-xl transition-all text-zinc-400"><i class="fa-solid fa-trash text-sm"></i></a>
                                             </div>
                                         </td>
                                     </tr>
@@ -325,7 +347,6 @@ if (!is_array($cursos_disponibles)) $cursos_disponibles = [];
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-    // 1. Script de SweetAlert2 (Para borrar)
     function confirmarBorrado(event, url, nombreUsuario) {
         event.preventDefault();
         Swal.fire({
@@ -343,12 +364,9 @@ if (!is_array($cursos_disponibles)) $cursos_disponibles = [];
         });
     }
 
-    // 2. Scripts de Chart.js (Gráficos)
-    // Configuración global para tema oscuro
     Chart.defaults.color = '#a1a1aa';
     Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
 
-    // Gráfico 1: Alumnos por Curso (Doughnut)
     const ctxCursos = document.getElementById('alumnosCursoChart').getContext('2d');
     new Chart(ctxCursos, {
         type: 'doughnut',
@@ -361,17 +379,9 @@ if (!is_array($cursos_disponibles)) $cursos_disponibles = [];
                 hoverOffset: 6
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '75%',
-            plugins: {
-                legend: { position: 'right', labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' } }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right', labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' } } } }
     });
 
-    // Gráfico 2: Total Usuarios (Barras)
     const ctxTotal = document.getElementById('usuariosTotalChart').getContext('2d');
     new Chart(ctxTotal, {
         type: 'bar',
@@ -381,28 +391,10 @@ if (!is_array($cursos_disponibles)) $cursos_disponibles = [];
                 label: 'Usuarios Registrados',
                 data: [<?php echo $totalAlumnosChart; ?>, <?php echo $totalProfesoresChart; ?>],
                 backgroundColor: ['#06b6d4', '#8b5cf6'],
-                borderRadius: 8,
-                borderWidth: 0,
-                barThickness: 50
+                borderRadius: 8, borderWidth: 0, barThickness: 50
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: '#27272a', drawBorder: false }, // Líneas guía sutiles
-                    ticks: { stepSize: 1 } // Para que no muestre 1.5 alumnos
-                },
-                x: {
-                    grid: { display: false, drawBorder: false }
-                }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#27272a', drawBorder: false }, ticks: { stepSize: 1 } }, x: { grid: { display: false, drawBorder: false } } } }
     });
     </script>
 </body>
